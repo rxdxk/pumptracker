@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PumpTracker</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='12' fill='%2335e39b'/><circle cx='16' cy='16' r='5' fill='%230b0f14'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="logo"></span>
+      <span>Pump<b>Tracker</b></span>
+    </div>
+    <form class="search" id="search">
+      <input id="searchInput" placeholder="Адрес токена, дева или кошелька…" autocomplete="off" spellcheck="false">
+      <kbd>/</kbd>
+    </form>
+    <div class="status" id="status">
+      <span class="dot"></span><span id="stConn">подключение…</span>
+      <span class="sep"></span><span id="stRate" class="mono">—</span>
+      <span class="sep"></span><span id="stSol" class="mono">SOL —</span>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabs">
+    <button data-tab="feed" class="active">Лента алертов <span class="badge" id="feedBadge" hidden>0</span></button>
+    <button data-tab="live">Новые токены</button>
+    <button data-tab="devs">Девы</button>
+    <button data-tab="smart">Умные деньги</button>
+    <button data-tab="filters">Фильтры</button>
+  </nav>
+
+  <main>
+    <!-- ЛЕНТА -->
+    <section class="tab" id="tab-feed">
+      <div class="layout">
+        <div>
+          <div class="toolbar">
+            <div class="chips" id="kindChips"></div>
+            <div class="toolbar-right">
+              <button class="ghost btn-click-axiom" title="Что открывает клик по токену">↗ Клик → Axiom</button>
+              <button class="ghost" id="btnNotify" title="Уведомления браузера">🔔 Уведомления</button>
+              <div class="sound-group">
+                <button class="ghost" id="btnSound" title="Звук алертов">🔈 Звук</button><button class="ghost" id="btnSoundCfg" title="Громкость и прослушивание">▾</button>
+                <div class="popover" id="soundPop" hidden></div>
+              </div>
+            </div>
+          </div>
+          <div id="feed" class="feed"></div>
+          <div class="empty" id="feedEmpty">
+            <div class="empty-icon">◎</div>
+            <p>Алертов пока нет.</p>
+            <p class="muted">Трекер слушает pump.fun в реальном времени. Как только токен пройдёт твои фильтры или отслеживаемый кошелёк сделает сделку, карточка появится здесь.<br>
+            История девов копится со временем. Чтобы алерты пошли сразу, ослабь фильтры во вкладке «Фильтры».</p>
+          </div>
+        </div>
+        <aside class="side">
+          <div class="panel">
+            <h3>Сейчас</h3>
+            <div class="tiles" id="tiles"></div>
+          </div>
+          <div class="panel">
+            <h3>Как читать скор дева</h3>
+            <ul class="legend">
+              <li><span class="score good">70</span> мигрирует токены, не сливает</li>
+              <li><span class="score mid">50</span> смешанная история</li>
+              <li><span class="score bad">20</span> сливает или серийный лончер</li>
+              <li><span class="score neutral">—</span> истории нет</li>
+            </ul>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- НОВЫЕ ТОКЕНЫ -->
+    <section class="tab" id="tab-live" hidden>
+      <div class="toolbar">
+        <div class="muted">Все токены, созданные с момента запуска трекера. Обновляется вживую.</div>
+        <div class="toolbar-right">
+          <label class="switch"><input type="checkbox" id="liveOnlyKnown"> только девы с историей</label>
+          <button class="ghost btn-click-axiom" title="Что открывает клик по токену">↗ Клик → Axiom</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="grid" id="liveTable">
+          <thead><tr><th>Токен</th><th>Возраст</th><th>Дев</th><th class="r">Покупка дева</th><th class="r">MC</th><th>Кривая</th><th class="r">Сделки</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ДЕВЫ -->
+    <section class="tab" id="tab-devs" hidden>
+      <div class="hero">
+        <div>
+          <h1>Рейтинг девов</h1>
+          <p class="muted">Скор 0–100 учитывает долю миграций, средний ATH, сливы и то, как часто дев запускает токены. Каждая точка в истории — один запуск.</p>
+        </div>
+        <div class="seg" id="devMode">
+          <button data-mode="best" class="on">🏆 Лучшие</button>
+          <button data-mode="all">Все активные</button>
+          <button data-mode="bad">🩸 Сливают</button>
+          <button data-mode="scam">🚩 Скам</button>
+        </div>
+      </div>
+      <div class="panel flush">
+        <div class="table-wrap">
+          <table class="grid devs" id="devTable">
+            <thead><tr><th class="c">#</th><th>Дев</th><th>Скор</th><th class="r">Запуски</th><th>Миграции</th><th class="r">Сливы</th><th class="r">Ср. ATH</th><th>История запусков</th><th class="r">Последний</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="empty small" id="devEmpty" hidden></div>
+      </div>
+      <div class="dots-legend muted small">
+        <span><i class="hd migrated"></i> миграция</span><span><i class="hd dumped"></i> дев слил</span><span><i class="hd other"></i> не дошёл</span>
+      </div>
+    </section>
+
+    <!-- УМНЫЕ ДЕНЬГИ -->
+    <section class="tab" id="tab-smart" hidden>
+      <div class="layout">
+        <div class="panel">
+          <h3>Рейтинг кошельков <span class="muted small">PnL на кривых pump.fun за 7 дней</span>
+            <button class="ghost small" id="btnLbRefresh">Пересчитать</button></h3>
+          <div class="table-wrap">
+            <table class="grid" id="lbTable">
+              <thead><tr><th>#</th><th>Кошелёк</th><th class="r">PnL</th><th class="r">Вложено</th><th class="r">Токенов</th><th class="r">Winrate</th><th>Активность</th><th></th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="empty small" id="lbEmpty" hidden>Рейтинг строится по сделкам, которые трекер увидел сам. Дай ему поработать хотя бы час.</div>
+        </div>
+        <aside class="side">
+          <div class="panel">
+            <h3>Отслеживаемые</h3>
+            <form id="trackForm" class="stack">
+              <input name="wallet" placeholder="Адрес кошелька" required spellcheck="false">
+              <div class="row">
+                <input name="label" placeholder="Метка (напр. KOL Вася)">
+                <select name="kind"><option value="trader">Трейдер</option><option value="dev">Дев</option></select>
+              </div>
+              <button class="primary">Добавить</button>
+            </form>
+            <div id="trackedList" class="tracked"></div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ФИЛЬТРЫ -->
+    <section class="tab" id="tab-filters" hidden>
+      <form id="settingsForm" class="settings"></form>
+    </section>
+  </main>
+
+  <div class="drawer-bg" id="drawerBg" hidden></div>
+  <aside class="drawer" id="drawer" aria-hidden="true">
+    <button class="drawer-close" id="drawerClose" aria-label="Закрыть">✕</button>
+    <div id="drawerBody"></div>
+  </aside>
+
+  <div class="toast" id="toast" hidden></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
